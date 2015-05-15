@@ -10,42 +10,42 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.datasets import fetch_20newsgroups
 import time
-from sklearn.pipeline import Pipeline
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import SGDClassifier
+import cPickle as pickle
 
-def processFolder():   
+def processFolder(type, name):   
 	
 	categories = ['alt.atheism', 'soc.religion.christian','comp.graphics', 'sci.med']
-	#categories = ['talk.politics.guns', 'talk.politics.mideast','talk.politics.misc', 'talk.religion.misc']
-	twenty_train = fetch_20newsgroups(subset="train", shuffle=True, random_state=42, categories=categories, remove=('headers', 'footers', 'quotes'))	
-	twenty_test = fetch_20newsgroups(subset="test", shuffle=True, random_state=42, categories=categories, remove=('headers', 'footers', 'quotes'))
-	docs_test = twenty_test.data
-	
-	text_clf_nb = Pipeline([('vect', CountVectorizer(stop_words="english", max_features=20000)), ('tfidf', TfidfTransformer()), ('clf', MultinomialNB())])
-	text_clf_svm = Pipeline([('vect', CountVectorizer(stop_words="english", max_features=20000)), ('tfidf', TfidfTransformer()),  ('clf', SGDClassifier(loss='hinge', penalty='l2',alpha=1e-3, n_iter=5, random_state=42))])	
-	text_clf_nb = text_clf_nb.fit(twenty_train.data, twenty_train.target)
-	text_clf_svm = text_clf_svm.fit(twenty_train.data, twenty_train.target)
-
-	predicted_nb = text_clf_nb.predict(docs_test)
-	predicted_svm = text_clf_svm.predict(docs_test)
-
-	print "NB: ",str(1.0-numpy.mean(predicted_nb == twenty_test.target))
-	print "SVM: ",str(1.0-numpy.mean(predicted_svm == twenty_test.target))
-
+	twenty_train = fetch_20newsgroups(subset=type, shuffle=True, random_state=42, categories=categories, remove=('headers', 'footers', 'quotes'))
+	count_vect = CountVectorizer(stop_words="english", max_features=25000)
+	X_train_counts = count_vect.fit_transform(twenty_train.data)
+	tfidf_transformer = TfidfTransformer()
+	X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
+	iter = 0
+	contentOuter = []
+	labelOuter = []
+	bowArray = X_train_tfidf.toarray()
+	dataSetOutFile = open(name, 'wb')
+	for data in twenty_train.data:
+		contentInner = bowArray[iter]
+		labelInner = twenty_train.target[iter]
+		#print labelInner
+		contentLabel = (contentInner, labelInner)
+		pickle.dump(contentLabel, dataSetOutFile)
+		iter += 1
+	dataSetOutFile.close()
 	return #(numpy.array(contentOuter), numpy.array(labelOuter))
 
 
 if __name__ == "__main__":
-	if len(sys.argv)!=1: # Expect exactly one argument: the count data file
+	if len(sys.argv)!=2: # Expect exactly one argument: the count data file
 		usage()
 		sys.exit(2)
 
-	#outputPath = sys.argv[1]       
+	outputPath = sys.argv[1]       
 	start_time = time.time()
 	print "Processing Folder"	
-	processFolder() 
-	#processFolder("test", outputPath+'/20NewsSetOutTest.pkl') 
+	processFolder("train", outputPath+'/20NewsSetOutTrain.pkl') 
+	processFolder("test", outputPath+'/20NewsSetOutTest.pkl') 
 	#processFolder("test", outputPath+'/20NewsSetOutTest.pkl') 	
 	print("--- %s seconds ---" % (time.time() - start_time))    
 	'''
